@@ -27,7 +27,7 @@ def main():
     # simple(save_path, X_train, W_train)
 
     # https://en.wikipedia.org/wiki/Cross-validation_(statistics)#k-fold_cross-validation
-    k_cross_validation = 3
+    k_cross_validation = 20
     hyperparameter_optimization(
         save_path, X_train, W_train,
         k_cross_validation,
@@ -102,8 +102,9 @@ def hyperparameter_optimization(
         print('i_cross_validation', i_cross_validation)
         i1 = (i_cross_validation + 0) * sample_size
         i2 = (i_cross_validation + 1) * sample_size
-        X_train = X[i1:i2, :, :]
-        W_train = W[i1:i2, :, :]
+        obj = range(i1, i2 + 1)
+        X_train = np.delete(X, list(range(i1, i2 + 1)), 0)
+        W_train = np.delete(W, list(range(i1, i2 + 1)), 0)
         # k: Number of mixture components. (default: 3)
         for k in range(1, 12 + 1):
             print('k', k)
