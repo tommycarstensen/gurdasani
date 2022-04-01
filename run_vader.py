@@ -94,6 +94,10 @@ def hyperparameter_optimization(
 ):
 
     sample_size = X.shape[0] // k_cross_validation
+    if not os.path.isdir('touch'):
+        os.mkdir('touch')
+
+    combination = 0
     for i_cross_validation in range(k_cross_validation):
         print('i_cross_validation', i_cross_validation)
         i1 = (i_cross_validation + 0) * sample_size
@@ -111,6 +115,12 @@ def hyperparameter_optimization(
                     # The hidden layers. List of length >= 1.
                     # Specification of the number of nodes.
                     for n_hidden in ([12, 2], [36, 4], [36, 8]):
+
+                        combination += 1
+                        if os.path.isfile(f'touch/{combination}'):
+                            continue
+                        with open(f'touch/{combination}', 'w') as f:
+                            f.write('')
 
                         vader = VADER(
                             X_train=X_train,
