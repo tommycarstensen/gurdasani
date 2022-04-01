@@ -121,7 +121,7 @@ def hyperparameter_optimization(
                         if os.path.isfile(f'touch/{combination}'):
                             continue
                         with open(f'touch/{combination}', 'w') as f:
-                            f.write('')
+                            f.write('initiated')
 
                         vader = VADER(
                             X_train=X_train,
@@ -163,6 +163,9 @@ def hyperparameter_optimization(
                         p = vader.predict(X_train)
                         with open(os.path.join(save_path, 'p.npy'), 'wb') as f:
                             np.save(f, p)
+
+                        with open(f'touch/{combination}', 'w') as f:
+                            f.write('finished')
 
     return
 
