@@ -151,7 +151,8 @@ def hyperparameter_optimization(
                                 k_cross_validation,
                                 k, batch_size, learning_rate,
                                 n_hidden[0], n_hidden[1],
-                                d['reconstruction_loss'], d['latent_loss'],
+                                d['reconstruction_loss'].numpy(),
+                                d['latent_loss'].numpy(),
                                 sep='\t', file=f,
                                 )
 
