@@ -1,17 +1,14 @@
 from VaDER.tensorflow2.vader.vader import VADER
 import numpy as np
 import os
-
-# Default values:
-# (X_train, W_train=None, y_train=None, n_hidden=[12, 2], k=3, groups=None,
-# output_activation=None,
-# batch_size = 32, learning_rate=1e-3, alpha=1.0, phi=None, cell_type="LSTM",
-# cell_params=None, recurrent=True,
-# save_path=None, eps=1e-10, seed=None, n_thread=0)
+import re
 
 
 def main():
 
+    # axis 0: individuals; approximately 16k
+    # axis 1: years; approximately 1940-2016
+    # axis 2: ICD codes; approximately 60
     print('loading X_granular.npy')
     X_train = np.load('X_granular.npy')
     print('loading W_granular.npy')
@@ -20,7 +17,7 @@ def main():
     save_path = os.path.join(
         'out_vader', 'vader.ckpt_cell_type_LSTM_recurrent_True_granular')
 
-    # exclude years with missingness greater than 40%
+    # Exclude years with missingness greater than 40%; i.e. keep 1999-2016.
     W_train = W_train[:, 1999-1940:2016-1940+1, :]
     X_train = X_train[:, 1999-1940:2016-1940+1, :]
 
@@ -83,7 +80,7 @@ def simple(save_path, X_train, W_train):
         print(save_path)
         print(f"model = keras.models.load_model('{save_path}') ; dir(model)")
 
-    exit()
+        exit()
 
     return
 
@@ -151,8 +148,14 @@ def hyperparameter_optimization(
                                 k_cross_validation,
                                 k, batch_size, learning_rate,
                                 n_hidden[0], n_hidden[1],
-                                d['reconstruction_loss'].numpy(),
-                                d['latent_loss'].numpy(),
+                                re.search(
+                                    'numpy=([0-9.]*)',
+                                    str(d['reconstruction_loss']),
+                                    )[1],
+                                re.search(
+                                    'numpy=([0-9.]*)',
+                                    str(d['latent_loss']),
+                                    )[1],
                                 sep='\t', file=f,
                                 )
 
@@ -166,6 +169,8 @@ def hyperparameter_optimization(
 
                         with open(f'touch/{combination}', 'w') as f:
                             f.write('finished')
+
+                        exit()
 
     return
 
