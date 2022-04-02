@@ -26,7 +26,7 @@ def main():
     # https://en.wikipedia.org/wiki/Cross-validation_(statistics)#k-fold_cross-validation
     k_cross_validation = 20
     hyperparameter_optimization(
-        save_path, X_train, W_train,
+        X_train, W_train,
         k_cross_validation,
         )
 
@@ -86,7 +86,7 @@ def simple(save_path, X_train, W_train):
 
 
 def hyperparameter_optimization(
-    save_path, X, W,
+    X, W,
     k_cross_validation,
 ):
 
@@ -94,9 +94,7 @@ def hyperparameter_optimization(
     if not os.path.isdir('touch'):
         os.mkdir('touch')
 
-    combination = 0
     for i_cross_validation in range(k_cross_validation):
-        print('i_cross_validation', i_cross_validation)
         i1 = (i_cross_validation + 0) * sample_size
         i2 = (i_cross_validation + 1) * sample_size
         obj = range(i1, i2 + 1)
@@ -104,7 +102,6 @@ def hyperparameter_optimization(
         W_train = np.delete(W, list(range(i1, i2 + 1)), 0)
         # k: Number of mixture components. (default: 3)
         for k in range(1, 12 + 1):
-            print('k', k)
             # for num_layers in (1, 2):
             # Batch size used for training. (default: 32)
             for batch_size in (16, 32, 64, 128):
@@ -114,11 +111,33 @@ def hyperparameter_optimization(
                     # Specification of the number of nodes.
                     for n_hidden in ([12, 2], [36, 4], [36, 8]):
 
-                        combination += 1
-                        if os.path.isfile(f'touch/{combination}'):
+                        t = (
+                            f'i_cross_validation_{i_cross_validation}',
+                            f'k_{k}',
+                            f'batch_size_{batch_size}',
+                            f'learning_rate_{learning_rate}',
+                            f'n_hidden_{n_hidden[0]}_{n_hidden[1]}',
+                            )
+
+                        save_path = os.path.join(
+                            'out_vader',
+                            'vader.ckpt_cell_type_LSTM_recurrent_True_granular',
+                            '_'.join(t),
+                            )
+
+                        if os.path.isfile('touch/{}'.format('_'.join(t))):
                             continue
-                        with open(f'touch/{combination}', 'w') as f:
-                            f.write('initiated')
+                        with open('touch/{}'.format('_'.join(t)), 'w') as f:
+                            f.write('initiated\n')
+
+                        # Be verbose.
+                        print(
+                            'i_cross_validation', i_cross_validation,
+                            'k', k,
+                            'batch_size', batch_size,
+                            'learning_rate', learning_rate,
+                            'n_hidden', n_hidden,
+                            )
 
                         vader = VADER(
                             X_train=X_train,
@@ -145,7 +164,7 @@ def hyperparameter_optimization(
                         with open('get_loss.txt', 'a') as f:
                             d = vader.get_loss(X_train, W_train)
                             print(
-                                k_cross_validation,
+                                i_cross_validation,
                                 k, batch_size, learning_rate,
                                 n_hidden[0], n_hidden[1],
                                 re.search(
@@ -167,8 +186,8 @@ def hyperparameter_optimization(
                         with open(os.path.join(save_path, 'p.npy'), 'wb') as f:
                             np.save(f, p)
 
-                        with open(f'touch/{combination}', 'w') as f:
-                            f.write('finished')
+                        with open('touch/{}'.format('_'.join(t)), 'w') as f:
+                            f.write('finished\n')
 
                         exit()
 
