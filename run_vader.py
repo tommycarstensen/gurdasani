@@ -3,6 +3,8 @@ import numpy as np
 import os
 import re
 
+k_range = list(range(1, 12 + 1))
+k_cross_validation = 20
 
 def main():
 
@@ -24,11 +26,127 @@ def main():
     # simple(save_path, X_train, W_train)
 
     # https://en.wikipedia.org/wiki/Cross-validation_(statistics)#k-fold_cross-validation
-    k_cross_validation = 20
-    hyperparameter_optimization(
-        X_train, W_train,
-        k_cross_validation,
-        )
+    # hyperparameter_optimization(
+    #     X_train, W_train,
+    #     k_cross_validation,
+    #     )
+
+    prediction_strength(X_train, W_train)
+
+    return
+
+
+def prediction_strength(X, W):
+
+    # Calculate prediction strength to choose number of clusters.
+
+    # Steps here:
+    # https://academic.oup.com/gigascience/article/8/11/giz134/5626377?login=false
+
+    # from plot_violin.py - values that give lowest reconstruction loss
+    batch_size = 16
+    learning_rate = 0.0001
+    n_hidden = [12, 2]
+
+    # split samples into two
+    samples = X.shape[0]
+    sample_size = X.shape[0] // 2
+    X1 = np.delete(X, list(range(0, sample_size + 1)), 0)
+    X2 = np.delete(X, list(range(sample_size + 1, samples)), 0)
+    W1 = np.delete(W, list(range(0, sample_size + 1)), 0)
+    W2 = np.delete(W, list(range(sample_size + 1, samples)), 0)
+
+    for k in k_range:
+
+        if os.path.isfile(f'k{k}.txt'):
+            continue
+        with open(f'k{k}.txt', 'w') as f:
+            print('', file=f)
+
+        save_path = f'out/k{k}'
+
+        # 1) Train VaDER on the training data (the training data model).
+        vader1 = VADER(
+            X_train=X1,
+            W_train=W1,
+            save_path=save_path,
+            n_hidden=n_hidden,
+            # num_layers=num_layers,
+            k=k,
+            learning_rate=learning_rate,
+            # output_activation=None,
+            # recurrent=True,
+            batch_size=batch_size,
+            # recurrent=False,
+            # batch_size=16,
+
+            # cell_type="LSTM",
+            # recurrent=True,
+            )
+
+        vader1.pre_fit(n_epoch=50, verbose=True)
+
+        vader1.fit(n_epoch=50, verbose=True)
+
+        # with open('get_loss.txt', 'a') as f:
+        #     d = vader.get_loss(X_train, W_train)
+        #     print(
+        #         i_cross_validation,
+        #         k, batch_size, learning_rate,
+        #         n_hidden[0], n_hidden[1],
+        #         re.search(
+        #             'numpy=([0-9.]*)',
+        #             str(d['reconstruction_loss']),
+        #             )[1],
+        #         re.search(
+        #             'numpy=([0-9.]*)',
+        #             str(d['latent_loss']),
+        #             )[1],
+        #         sep='\t', file=f,
+        #         )
+
+        # 2) Assign clusters to the test data using the training data model.
+        # returns one dimensional array of clusters
+        c1 = vader1.cluster(X2)
+        with open(os.path.join(save_path, 'c.npy'), 'wb') as f:
+            np.save(f, c)
+
+        # 3) Train VaDER on the test data (the test data model).
+        vader2 = VADER(
+            X_train=X2,
+            W_train=W2,
+            save_path=save_path,
+            n_hidden=n_hidden,
+            # num_layers=num_layers,
+            k=k,
+            learning_rate=learning_rate,
+            # output_activation=None,
+            # recurrent=True,
+            batch_size=batch_size,
+            # recurrent=False,
+            # batch_size=16,
+
+            # cell_type="LSTM",
+            # recurrent=True,
+            )
+
+        # 4) Assign clusters to the test data using the test data model.
+        # returns one dimensional array of clusters
+        c2 = vader2.cluster(X2)
+        with open(os.path.join(save_path, 'c.npy'), 'wb') as f:
+            np.save(f, c)
+
+        # 5) Compare the resulting 2 clusterings: for each cluster of the test data model, compute the fraction of pairs of samples in that cluster that are also assigned to the same cluster by the training data model.
+        # Prediction strength is defined as the minimum proportion across all clusters of the test data model [43].
+        print(c1, c2)
+        ps = np.sum(c1 == c2) / len(c1)
+        print(ps)
+        for p1, p2 in zip(c1, c2):
+            if p1 == p2:
+                ps += 1
+        print(ps)
+        with open(f'k{k}.txt', 'w') as f:
+            print(ps, file=f)
 
     return
 
@@ -85,14 +203,17 @@ def simple(save_path, X_train, W_train):
     return
 
 
-def hyperparameter_optimization(
-    X, W,
-    k_cross_validation,
-):
+def hyperparameter_optimization(X, W,):
 
     sample_size = X.shape[0] // k_cross_validation
     if not os.path.isdir('touch'):
         os.mkdir('touch')
+
+    combinations_run = set()
+    if os.path.isfile('get_loss.txt'):
+        with open('get_loss.txt') as f:
+            for line in f:
+                combinations_run.add(tuple(line.split()[:-2]))
 
     for i_cross_validation in range(k_cross_validation):
         i1 = (i_cross_validation + 0) * sample_size
@@ -101,7 +222,7 @@ def hyperparameter_optimization(
         X_train = np.delete(X, list(range(i1, i2 + 1)), 0)
         W_train = np.delete(W, list(range(i1, i2 + 1)), 0)
         # k: Number of mixture components. (default: 3)
-        for k in range(1, 12 + 1):
+        for k in k_range:
             # for num_layers in (1, 2):
             # Batch size used for training. (default: 32)
             for batch_size in (16, 32, 64, 128):
@@ -119,6 +240,15 @@ def hyperparameter_optimization(
                             f'n_hidden_{n_hidden[0]}_{n_hidden[1]}',
                             )
 
+                        t2 = tuple(map(str, [
+                            i_cross_validation,
+                            k,
+                            batch_size,
+                            learning_rate,
+                            n_hidden[0],
+                            n_hidden[1],
+                            ]))
+
                         save_path = os.path.join(
                             'out_vader',
                             'vader.ckpt_cell_type_LSTM_recurrent_True_granular',
@@ -126,7 +256,11 @@ def hyperparameter_optimization(
                             )
 
                         if os.path.isfile('touch/{}'.format('_'.join(t))):
-                            continue
+                            if t2 in combinations_run:
+                                continue
+                            with open('touch/{}'.format('_'.join(t))) as f:
+                                if f.read() == 'initiated\n':
+                                    continue
                         with open('touch/{}'.format('_'.join(t)), 'w') as f:
                             f.write('initiated\n')
 
@@ -143,7 +277,7 @@ def hyperparameter_optimization(
                             X_train=X_train,
                             W_train=W_train,
                             save_path=save_path,
-                            # n_hidden=[12, 2],
+                            n_hidden=n_hidden,
                             # num_layers=num_layers,
                             k=k,
                             learning_rate=learning_rate,
@@ -178,10 +312,12 @@ def hyperparameter_optimization(
                                 sep='\t', file=f,
                                 )
 
+                        # returns one dimensional array of clusters
                         c = vader.cluster(X_train)
                         with open(os.path.join(save_path, 'c.npy'), 'wb') as f:
                             np.save(f, c)
 
+                        # returns predicted array with same dimensions as X_train                        
                         p = vader.predict(X_train)
                         with open(os.path.join(save_path, 'p.npy'), 'wb') as f:
                             np.save(f, p)
