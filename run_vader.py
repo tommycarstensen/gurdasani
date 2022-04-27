@@ -108,8 +108,8 @@ def prediction_strength(X, W):
         # 2) Assign clusters to the test data using the training data model.
         # returns one dimensional array of clusters
         c1 = vader1.cluster(X2)
-        with open(os.path.join(save_path, 'c.npy'), 'wb') as f:
-            np.save(f, c)
+        with open(os.path.join(save_path, 'c1.npy'), 'wb') as f:
+            np.save(f, c1)
 
         # 3) Train VaDER on the test data (the test data model).
         vader2 = VADER(
@@ -133,8 +133,8 @@ def prediction_strength(X, W):
         # 4) Assign clusters to the test data using the test data model.
         # returns one dimensional array of clusters
         c2 = vader2.cluster(X2)
-        with open(os.path.join(save_path, 'c.npy'), 'wb') as f:
-            np.save(f, c)
+        with open(os.path.join(save_path, 'c2.npy'), 'wb') as f:
+            np.save(f, c2)
 
         # 5) Compare the resulting 2 clusterings: for each cluster of the test data model, compute the fraction of pairs of samples in that cluster that are also assigned to the same cluster by the training data model.
         # Prediction strength is defined as the minimum proportion across all clusters of the test data model [43].
